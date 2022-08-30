@@ -1,0 +1,342 @@
+3^9
+3^2
+setwd("~/Dropbox (MIT)/Projects/species_correlated_responses/")
+#
+# cleaning wd, loading functions and packages ------------------------------
+rm(list = ls(all = TRUE))
+if(!require(deSolve)) {install.packages("deSolve"); library(deSolve)}
+if(!require(rootSolve)) {install.packages("rootSolve"); library(rootSolve)}
+if(!require(ggplot2)) {install.packages("ggplot2"); library(ggplot2)}
+if(!require(plotly)) {install.packages("plotly"); library(plotly)}
+if(!require(expm)) {install.packages("expm"); library(expm)}
+if(!require(MASS)) {install.packages("MASS"); library(MASS)}
+if(!require(tidyverse)) {install.packages("tidyverse"); library(tidyverse)}
+if(!require(quadprog)) {install.packages("quadprog"); library(quadprog)}
+if(!require(ggsci)) {install.packages("ggsci"); library(ggsci)}
+if(!require(doBy)) {install.packages("doBy"); library(doBy)}
+if(!require(plyr)) {install.packages("plyr"); library(plyr)}
+if(!require(rEDM)) {install.packages("rEDM"); library(rEDM)}
+if(!require(scales)) {install.packages("scales"); library(scales)}
+if(!require(viridis)) {install.packages("viridis"); library(viridis)}
+if(!require(ggrepel)) {install.packages("ggrepel"); library(ggrepel)}
+# loading time series and s-map results ------------------------------
+# whether to normalize data for s-map
+normalize <- TRUE
+# empirical data
+data <- "blasius_2020_C1_interpolated"
+# whether number of time points to evolve perturbations is fixed or variable
+n_time_points <- "fixed"
+# load data
+ts <- read.csv(paste("data/empirical_time_series/", data, ".csv", sep = ""), header = TRUE)
+sp_names <- names(ts)[-1]
+n_sp <- ncol(ts) - 1
+# define time series section to use for s-map
+t1 <- 20
+t2 <- ts$time[nrow(ts)]
+ts <- ts[ts$time >= t1 & ts$time <= t2, ]
+# normalize time series for s-map
+if (normalize) {
+mean_ts <- apply(ts[ , -1], 2, mean, na.rm = TRUE)
+sd_ts <- apply(ts[ , -1], 2, sd, na.rm = TRUE)
+ts[ , -1] <- t((t(ts[ , -1]) - mean_ts) / sd_ts)
+}
+if (normalize) {
+load(file = paste("results/empirical_time_series/sequential_smap_jacobians_", data,
+"_times_", t1, "_", t2, "_normalized.RData", sep = ""))
+} else {
+load(file = paste("results/empirical_time_series/sequential_smap_jacobians_", data,
+"_times_", t1, "_", t2, ".RData", sep = ""))
+}
+J_list <- smap_jacobians
+# number of Jacobian matrices
+n <- length(J_list)
+if (normalize) {
+load(file = paste("results/empirical_time_series/covariance_measures_", data,
+"_times_", t1, "_", t2, "_", n_time_points,
+"_time_points_normalized", ".RData", sep = ""))
+} else {
+load(file = paste("results/empirical_time_series/covariance_measures_", data,
+"_times_", t1, "_", t2, "_", n_time_points,
+"_time_points", ".RData", sep = ""))
+}
+# community response
+full_df$community_response <- full_df$cov_det
+# individual species contribution
+sub_df <- full_df[ , paste("cov", paste(1:n_sp, 1:n_sp, sep = ""), sep = "_")]
+full_df$species_contrib <- apply(sub_df, 1, function(x) prod(x))
+# species pairs contribution
+full_df$pairs_contrib <- full_df$community_response / full_df$species_contrib
+# Inset ------------------------------
+# build new data frame for plotting
+ts_plot <- ts[ts$time > 20 & ts$time < 135, ]
+plot_df <- gather(ts_plot, "variable", "value", -time)
+# change variable names and plot
+plot_df$variable[plot_df$variable == "algae"] <- "Prey (algae)"
+plot_df$variable[plot_df$variable == "rotifers"] <- "Predator (rotifers)"
+fig <- ggplot(data = plot_df,
+aes(x = time, y = value, group = variable, linetype = variable)) +
+geom_line(size = 1) +
+scale_linetype_manual(values = c("solid", "dashed")) +
+xlab("Time (days)") +
+ylab("Abundance (normalized)") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_blank(),
+legend.text = element_text(size = 18),
+legend.key.size = unit(1.2, "cm"),
+legend.position = "top")
+# Panel A ------------------------------
+full_df$pairs_contrib_bin <- "Intermediate"
+full_df$pairs_contrib_bin[log(full_df$pairs_contrib) > quantile(log(full_df$pairs_contrib), probs = 0.75)] <- "Low"
+full_df$pairs_contrib_bin[log(full_df$pairs_contrib) < quantile(log(full_df$pairs_contrib), probs = 0.25)] <- "High"
+fig <- ggplot(data = full_df, aes(x = rotifers, y = algae,
+shape = pairs_contrib_bin, fill = pairs_contrib_bin,
+alpha = pairs_contrib_bin)) +
+geom_point(size = 3.2) +
+scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282"),
+name = "Contribution of\nspecies correlations") +
+scale_shape_manual(values = c(21, 22, 24),
+name = "Contribution of\nspecies correlations") +
+scale_alpha_manual(values = c(1, 0.5, 1),
+name = "Contribution of\nspecies correlations") +
+coord_equal() +
+scale_x_continuous(limits = c(-2, 4)) +
+scale_y_continuous(limits = c(-2, 4)) +
+guides(fill = guide_legend(override.aes = list(size = 4)),
+shape = guide_legend(override.aes = list(size = 4)),
+alpha = guide_legend(override.aes = list(size = 4))) +
+xlab("Predator (rotifers)") +
+ylab("Prey (algae)") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_text(size = 18),
+legend.text = element_text(size = 16),
+legend.key.size = unit(0.8, "cm"),
+legend.position = "top")
+fig
+model <- lm(algae ~ pairs_contrib_bin,
+data = subset(full_df, pairs_contrib_bin == "High" | pairs_contrib_bin == "Low"))
+summary(model)
+t.test(subset(full_df, pairs_contrib_bin == "High")$algae, subset(full_df, pairs_contrib_bin == "Low")$algae)
+fig <- ggplot(data = subset(full_df, pairs_contrib_bin == "High" | pairs_contrib_bin == "Low"),
+aes(x = pairs_contrib_bin, y = algae, color = pairs_contrib_bin)) +
+geom_boxplot(size = 1.5, outlier.size = 2.5) +
+scale_color_manual(values = c("#567F55", "#83C282")) +
+scale_y_continuous(limits = c(-2, 4)) +
+xlab("") +
+ylab("Prey (algae)") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 18),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 18),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.position = "none")
+full_df <- full_df[full_df$time > 20 & full_df$time < 135, ]
+fig <- ggplot() +
+geom_line(data = full_df, aes(x = time, y = pairs_contrib),
+size = 0.7) +
+geom_point(data = full_df, aes(x = time, y = pairs_contrib,
+fill = pairs_contrib_bin,
+shape = pairs_contrib_bin), size = 3.2) +
+scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
+scale_shape_manual(values = c(21, 22, 24)) +
+xlab("Time (days)") +
+ylab(expression(atop("Contribution of species",
+"correlations (|"~bold(P)~"|) in log"))) +
+guides(fill = guide_legend(override.aes = list(size = 4)),
+shape = guide_legend(override.aes = list(size = 4))) +
+scale_y_log10(breaks = trans_breaks("log10", function(x) 10^x),
+labels = trans_format("log10", math_format(10^.x))) +
+annotation_logticks(sides = "l") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_blank(),
+legend.text = element_text(size = 18),
+legend.key.size = unit(0.8, "cm"),
+legend.position = "top")
+#
+# cleaning wd, loading functions and packages ------------------------------
+rm(list = ls(all = TRUE))
+if(!require(deSolve)) {install.packages("deSolve"); library(deSolve)}
+if(!require(rootSolve)) {install.packages("rootSolve"); library(rootSolve)}
+if(!require(ggplot2)) {install.packages("ggplot2"); library(ggplot2)}
+if(!require(plotly)) {install.packages("plotly"); library(plotly)}
+if(!require(expm)) {install.packages("expm"); library(expm)}
+if(!require(MASS)) {install.packages("MASS"); library(MASS)}
+if(!require(tidyverse)) {install.packages("tidyverse"); library(tidyverse)}
+if(!require(quadprog)) {install.packages("quadprog"); library(quadprog)}
+if(!require(ggsci)) {install.packages("ggsci"); library(ggsci)}
+if(!require(doBy)) {install.packages("doBy"); library(doBy)}
+if(!require(plyr)) {install.packages("plyr"); library(plyr)}
+if(!require(rEDM)) {install.packages("rEDM"); library(rEDM)}
+if(!require(scales)) {install.packages("scales"); library(scales)}
+if(!require(viridis)) {install.packages("viridis"); library(viridis)}
+if(!require(ggrepel)) {install.packages("ggrepel"); library(ggrepel)}
+# loading time series and s-map results ------------------------------
+# whether to normalize data for s-map
+normalize <- TRUE
+# empirical data
+data <- "becks_2005_panel_g"
+# whether number of time points to evolve perturbations is fixed or variable
+n_time_points <- "fixed"
+# load data
+ts <- read.csv(paste("data/empirical_time_series/", data, ".csv", sep = ""), header = TRUE)
+sp_names <- names(ts)[-1]
+n_sp <- ncol(ts) - 1
+# define time series section to use for s-map
+t1 <- 8
+t2 <- ts$time[nrow(ts)]
+ts <- ts[ts$time >= t1 & ts$time <= t2, ]
+ts <- na.omit(ts)
+# normalize time series for s-map
+if (normalize) {
+mean_ts <- apply(ts[ , -1], 2, mean, na.rm = TRUE)
+sd_ts <- apply(ts[ , -1], 2, sd, na.rm = TRUE)
+ts[ , -1] <- t((t(ts[ , -1]) - mean_ts) / sd_ts)
+}
+if (normalize) {
+load(file = paste("results/empirical_time_series/sequential_smap_jacobians_", data,
+"_times_", t1, "_", t2, "_normalized.RData", sep = ""))
+} else {
+load(file = paste("results/empirical_time_series/sequential_smap_jacobians_", data,
+"_times_", t1, "_", t2, ".RData", sep = ""))
+}
+J_list <- smap_jacobians
+# number of Jacobian matrices
+n <- length(J_list)
+if (normalize) {
+load(file = paste("results/empirical_time_series/covariance_measures_", data,
+"_times_", t1, "_", t2, "_", n_time_points,
+"_time_points_normalized", ".RData", sep = ""))
+} else {
+load(file = paste("results/empirical_time_series/covariance_measures_", data,
+"_times_", t1, "_", t2, "_", n_time_points,
+"_time_points", ".RData", sep = ""))
+}
+# community response
+full_df$community_response <- full_df$cov_det
+# individual species contribution
+sub_df <- full_df[ , paste("cov", paste(1:n_sp, 1:n_sp, sep = ""), sep = "_")]
+full_df$species_contrib <- apply(sub_df, 1, function(x) prod(x))
+# species pairs contribution
+full_df$pairs_contrib <- full_df$community_response / full_df$species_contrib
+# Inset ------------------------------
+# build new data frame for plotting
+ts_plot <- ts
+plot_df <- gather(ts_plot, "variable", "value", -time)
+# change variable names and plot
+plot_df$variable[plot_df$variable == "predator"] <- "Predator (ciliate)"
+plot_df$variable[plot_df$variable == "prey1"] <- "Preferred prey (bacteria)"
+plot_df$variable[plot_df$variable == "prey2"] <- "Less-preferred prey (bacteria)"
+plot_df$variable <- factor(plot_df$variable, levels = c("Predator (ciliate)",
+"Preferred prey (bacteria)",
+"Less-preferred prey (bacteria)"))
+fig <- ggplot(data = plot_df,
+aes(x = time, y = value, group = variable, linetype = variable)) +
+geom_line(size = 1) +
+scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+xlab("Time (days)") +
+ylab("Abundance (normalized)") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_blank(),
+legend.text = element_text(size = 16),
+legend.key.size = unit(1.2, "cm"),
+legend.position = "top")
+plot_df <- gather(full_df[ , c("time", "predator", "prey1", "prey2", "pairs_contrib")],
+"variable", "value", c("predator", "prey1", "prey2"))
+fig <- ggplot() +
+geom_line(data = plot_df,
+aes(x = time, y = value, group = variable, linetype = variable),
+size = 0.6) +
+geom_point(data = plot_df,
+aes(x = time, y = value, group = variable, color = log(pairs_contrib)),
+size = 3) +
+scale_color_viridis() +
+scale_linetype_manual(values = c("solid", "dashed", "dotted")) +
+xlab("Time (days)") +
+ylab("Abundance (normalized)") +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_blank(),
+legend.text = element_text(size = 18),
+legend.key.size = unit(1.2, "cm"),
+legend.position = "top")
+fig
+# Panel A ------------------------------
+full_df$pairs_contrib_bin <- "Intermediate"
+full_df$pairs_contrib_bin[log(full_df$pairs_contrib) > quantile(log(full_df$pairs_contrib), probs = 0.75)] <- "Low"
+full_df$pairs_contrib_bin[log(full_df$pairs_contrib) < quantile(log(full_df$pairs_contrib), probs = 0.25)] <- "High"
+fig <- ggplot(data = full_df, aes(x = prey2, y = prey1,
+shape = pairs_contrib_bin, fill = pairs_contrib_bin,
+alpha = pairs_contrib_bin)) +
+geom_point(size = 3.2) +
+scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282"),
+name = "Contribution of\nspecies correlations") +
+scale_shape_manual(values = c(21, 22, 24),
+name = "Contribution of\nspecies correlations") +
+scale_alpha_manual(values = c(1, 0.5, 1),
+name = "Contribution of\nspecies correlations") +
+coord_equal() +
+xlab("Less-preferred prey (bacteria)") +
+ylab("Preferred prey (bacteria)") +
+scale_x_continuous(limits = c(-2, 2.5)) +
+scale_y_continuous(limits = c(-2, 2.5)) +
+guides(fill = guide_legend(override.aes = list(size = 4)),
+shape = guide_legend(override.aes = list(size = 4)),
+alpha = guide_legend(override.aes = list(size = 4))) +
+theme_bw() +
+theme(panel.grid.major = element_blank(),
+panel.grid.minor = element_blank(),
+panel.border = element_rect(size = 1.5),
+axis.text.y = element_text(size = 16),
+axis.title = element_text(size = 20),
+axis.text.x = element_text(size = 16),
+plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+legend.title = element_text(size = 18),
+legend.text = element_text(size = 16),
+legend.key.size = unit(0.8, "cm"),
+legend.position = "top")
+fig
+model <- lm(prey1 ~ pairs_contrib_bin,
+data = subset(full_df, pairs_contrib_bin == "High" | pairs_contrib_bin == "Low"))
+summary(model)
+t.test(subset(full_df, pairs_contrib_bin == "High")$algae, subset(full_df, pairs_contrib_bin == "Low")$algae)
+summary(model)
+t.test(subset(full_df, pairs_contrib_bin == "High")$prey1, subset(full_df, pairs_contrib_bin == "Low")$prey1)
+t.test(subset(full_df, pairs_contrib_bin == "High")$prey1, subset(full_df, pairs_contrib_bin == "Low")$prey1,
+var.equal = TRUE)
+t.test(subset(full_df, pairs_contrib_bin == "High")$prey1, subset(full_df, pairs_contrib_bin == "Low")$prey1)

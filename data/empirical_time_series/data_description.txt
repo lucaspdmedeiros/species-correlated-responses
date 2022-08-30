@@ -1,0 +1,11 @@
+Becks et al 2005
+Reference: Becks, L., Hilker, F. M., Malchow, H., Jürgens, K., & Arndt, H. (2005). Experimental demonstration of chaos in a microbial food web. Nature, 435(7046), 1226-1229.
+Source: https://doi.org/10.5281/zenodo.2390198
+Details: 
+Experiment from panel g: Dilution 0.5 d-1. Removed all points prior to day 14 because of missing data. Time unit: days. Abundance units: number of individuals (or cells)/ml.
+
+Blasius et al 2020
+Reference: Blasius, B., Rudolf, L., Weithoff, G., Gaedke, U., & Fussmann, G. F. (2020). Long-term cyclic persistence in an experimental predator–prey system. Nature, 577(7789), 226-230.
+Source: https://figshare.com/articles/dataset/Time_series_of_long-term_experimental_predator-prey_cycles/10045976/1
+Details: 
+Experiment C1: Constant environment, M. minutum as algae species, 373 days. Missing data (t=0, t=10.98, t=154.2, t=203.95, t=218.05, t=226.94, t=237, and t=282.95) were removed. The data were interpolated using cubic hermite interpolation to obtain data with equidistant time intervals of 1.044818 day, yielding a total of 358 data points per time series. Time unit: days. Abundance units: (number of individuals (or cells)/ml).
