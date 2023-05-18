@@ -1,4 +1,4 @@
-# Code for Fig S5: contribution of species correlations over time for 
+# Code for Fig S6: contribution of species correlations over time for 
 # different values of k for a given population dynamics model
 
 # cleaning wd, loading functions and packages ------------------------------ 

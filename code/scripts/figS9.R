@@ -1,4 +1,4 @@
-# Code for Fig S8: contribution of species correlations across state space under 
+# Code for Fig S9: contribution of species correlations across state space under 
 # a given population dynamics model
 
 # cleaning wd, loading functions and packages ------------------------------ 
