@@ -107,14 +107,13 @@ if (func_name == "predator_prey") {
                              correlation_contrib = full_df_smap$correlation_contrib,
                              correlation_contrib_disc = full_df_smap$correlation_contrib_disc,
                              type = "S-map (inferred from noisy time series)")
+  plot_df_smap_sub <- subset(plot_df_smap, correlation_contrib_disc != "Intermediate")
   fig <- ggplot() +
-    geom_point(data = plot_df_smap, aes(x = x1, y = x2, 
-                                        fill = correlation_contrib_disc,
-                                        shape = correlation_contrib_disc,
-                                        alpha = correlation_contrib_disc), size = 3.5) +
-    scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
-    scale_shape_manual(values = c(21, 22, 24)) +
-    scale_alpha_manual(values = c(1, 0.5, 1)) +
+    geom_point(data = plot_df_smap_sub, aes(x = x1, y = x2, 
+                                            fill = correlation_contrib_disc,
+                                            shape = correlation_contrib_disc), size = 4) +
+    scale_fill_manual(values = c("#567F55", "#83C282")) +
+    scale_shape_manual(values = c(21, 24)) +
     xlab(TeX("Predator ($N_1$)")) +
     ylab(TeX("Prey ($N_2$)")) +
     theme_bw() +
@@ -148,14 +147,13 @@ if (func_name == "food_chain") {
                              correlation_contrib = full_df_smap$correlation_contrib,
                              correlation_contrib_disc = full_df_smap$correlation_contrib_disc,
                              type = "S-map (inferred from noisy time series)")
+  plot_df_smap_sub <- subset(plot_df_smap, correlation_contrib_disc != "Intermediate")
   fig <- ggplot() +
-    geom_point(data = plot_df_smap, aes(x = x1, y = x3, 
-                                        fill = correlation_contrib_disc,
-                                        shape = correlation_contrib_disc,
-                                        alpha = correlation_contrib_disc), size = 3.5) +
-    scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
-    scale_shape_manual(values = c(21, 22, 24)) +
-    scale_alpha_manual(values = c(1, 0.5, 1)) +
+    geom_point(data = plot_df_smap_sub, aes(x = x1, y = x3, 
+                                            fill = correlation_contrib_disc,
+                                            shape = correlation_contrib_disc), size = 4) +
+    scale_fill_manual(values = c("#567F55", "#83C282")) +
+    scale_shape_manual(values = c(21, 24)) +
     xlab(TeX("Producer ($N_1$)")) +
     ylab(TeX("Secondary consumer ($N_3$)")) +
     theme_bw() +
@@ -191,14 +189,13 @@ if (func_name == "lotka_volterra") {
                              correlation_contrib = full_df_smap$correlation_contrib,
                              correlation_contrib_disc = full_df_smap$correlation_contrib_disc,
                              type = "S-map (inferred from noisy time series)")
+  plot_df_smap_sub <- subset(plot_df_smap, correlation_contrib_disc != "Intermediate")
   fig <- ggplot() +
-    geom_point(data = plot_df_smap, aes(x = x4, y = x3, 
-                                        fill = correlation_contrib_disc,
-                                        shape = correlation_contrib_disc,
-                                        alpha = correlation_contrib_disc), size = 3.5) +
-    scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
-    scale_shape_manual(values = c(21, 22, 24)) +
-    scale_alpha_manual(values = c(1, 0.5, 1)) +
+    geom_point(data = plot_df_smap_sub, aes(x = x4, y = x3, 
+                                            fill = correlation_contrib_disc,
+                                            shape = correlation_contrib_disc), size = 4) +
+    scale_fill_manual(values = c("#567F55", "#83C282")) +
+    scale_shape_manual(values = c(21, 24)) +
     xlab(TeX("Competitor 4 ($N_4$)")) +
     ylab(TeX("Competitor 3 ($N_3$)")) +
     theme_bw() +
@@ -220,16 +217,17 @@ if (func_name == "lotka_volterra") {
 # plots of contribution of species correlations across time (left panels) ------------------------------
 # data frame for plotting
 plot_df <- rbind(plot_df_analytical, plot_df_smap)
+plot_df$correlation_contrib_disc[plot_df$correlation_contrib_disc == "Intermediate"] <- NA
 # plot
 fig <- ggplot() +
   geom_line(data = plot_df, aes(x = time, y = correlation_contrib),
             size = 0.4) +
   geom_point(data = plot_df, aes(x = time, y = correlation_contrib, 
                                  fill = correlation_contrib_disc,
-                                 shape = correlation_contrib_disc), size = 2.8) +
+                                 shape = correlation_contrib_disc), size = 3) +
   facet_wrap(~type, nrow = 2, scales = "free") +
-  scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
-  scale_shape_manual(values = c(21, 22, 24)) +
+  scale_fill_manual(values = c("#567F55", "#83C282")) +
+  scale_shape_manual(values = c(21, 24)) +
   xlab("Time") +
   ylab(expression(atop("Contribution of species",
                        "correlations (|"~bold(P)~"|) in log"))) +
@@ -261,5 +259,30 @@ if (save_plots) {
 # compute accuracy of contribution of species correlations inferred with s-map
 plot_df_analytical$correlation_contrib_disc[plot_df_analytical$correlation_contrib_disc == "Intermediate"] <- NA
 plot_df_smap$correlation_contrib_disc[plot_df_smap$correlation_contrib_disc == "Intermediate"] <- NA
-sum(plot_df_analytical$correlation_contrib_disc == plot_df_smap$correlation_contrib_disc, na.rm = TRUE) / 
-  sum(!is.na(plot_df_analytical$correlation_contrib_disc))
+(accuracy <- sum(plot_df_analytical$correlation_contrib_disc == plot_df_smap$correlation_contrib_disc, na.rm = TRUE) / 
+    sum(!is.na(plot_df_analytical$correlation_contrib_disc)))
+# randomization test
+accuracy_random <- c()
+for (i in 1:1000) {
+  shuffled <- plot_df_analytical$correlation_contrib_disc == sample(plot_df_smap$correlation_contrib_disc)
+  accuracy_random[i] <- sum(shuffled, na.rm = TRUE) / 
+    sum(!is.na(plot_df_analytical$correlation_contrib_disc))
+}
+mean(accuracy_random > accuracy)
+# plot results of randomization test
+accuracy_df <- data.frame(accuracy = accuracy_random)
+fig <- ggplot() +
+  geom_histogram(data = accuracy_df, aes(x = accuracy)) +
+  geom_vline(xintercept = accuracy, color = "red", linetype = "dashed", size = 1.5) +
+  xlab("S-map accuracy") +
+  ylab("Count") +
+  theme_bw() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_rect(size = 1.5),
+        axis.text.y = element_text(size = 15),
+        axis.title = element_text(size = 20),
+        axis.text.x = element_text(size = 16),
+        strip.text = element_text(size = 17),
+        strip.background = element_rect(fill = "white", size = 1.5),
+        plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))

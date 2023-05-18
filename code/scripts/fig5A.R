@@ -73,15 +73,15 @@ full_df$species_contrib <- apply(sub_df, 1, function(x) prod(x))
 full_df$correlation_contrib <- full_df$community_sensitivity / full_df$species_contrib
 
 # top left panel: abundance time series ------------------------------
-# taking only a subset of time series
-ts_plot <- ts[ts$time > 20 & ts$time < 135, ]
+# time series
+ts_plot <- ts
 plot_df <- gather(ts_plot, "variable", "value", -time)
 # change variable names and plot
 plot_df$variable[plot_df$variable == "algae"] <- "Prey (algae)"
 plot_df$variable[plot_df$variable == "rotifers"] <- "Predator (rotifers)"
 fig <- ggplot(data = plot_df, 
               aes(x = time, y = value, group = variable, linetype = variable)) +
-  geom_line(size = 1) +
+  geom_line(size = 0.8) +
   scale_linetype_manual(values = c("solid", "dashed")) +
   xlab("Time (days)") +
   ylab("Abundance (normalized)") +
@@ -115,22 +115,20 @@ full_df$correlation_contrib_disc <- "Intermediate"
 full_df$correlation_contrib_disc[log(full_df$correlation_contrib) > quantile(log(full_df$correlation_contrib), probs = 0.75)] <- "Low"
 full_df$correlation_contrib_disc[log(full_df$correlation_contrib) < quantile(log(full_df$correlation_contrib), probs = 0.25)] <- "High"
 # plot
-fig <- ggplot(data = full_df, aes(x = rotifers, y = algae, 
-                                  shape = correlation_contrib_disc, fill = correlation_contrib_disc, 
-                                  alpha = correlation_contrib_disc)) +
-  geom_point(size = 3.2) +
-  scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282"),
+full_df_sub <- subset(full_df, correlation_contrib_disc != "Intermediate")
+fig <- ggplot(data = full_df_sub, aes(x = rotifers, y = algae, 
+                                      shape = correlation_contrib_disc, 
+                                      fill = correlation_contrib_disc)) +
+  geom_point(size = 4) +
+  scale_fill_manual(values = c("#567F55", "#83C282"),
                     name = "Contribution of\nspecies correlations") +
-  scale_shape_manual(values = c(21, 22, 24),
-                     name = "Contribution of\nspecies correlations") +
-  scale_alpha_manual(values = c(1, 0.5, 1),
+  scale_shape_manual(values = c(21, 24),
                      name = "Contribution of\nspecies correlations") +
   coord_equal() +
   scale_x_continuous(limits = c(-2, 4)) +
   scale_y_continuous(limits = c(-2, 4)) +
   guides(fill = guide_legend(override.aes = list(size = 4)),
-         shape = guide_legend(override.aes = list(size = 4)),
-         alpha = guide_legend(override.aes = list(size = 4))) +   
+         shape = guide_legend(override.aes = list(size = 4))) +   
   xlab("Predator (rotifers)") +
   ylab("Prey (algae)") +
   theme_bw() +
@@ -164,7 +162,7 @@ model <- lm(algae ~ correlation_contrib_disc,
 summary(model)
 t.test(full_df$algae[full_df$correlation_contrib_disc == "High"], full_df$algae[full_df$correlation_contrib_disc == "Low"])
 # plot
-fig <- ggplot(data = subset(full_df, correlation_contrib_disc == "High" | correlation_contrib_disc == "Low"),
+fig <- ggplot(data = full_df_sub,
               aes(x = correlation_contrib_disc, y = algae, color = correlation_contrib_disc)) +
   geom_boxplot(size = 1.5, outlier.size = 2.5) +
   scale_color_manual(values = c("#567F55", "#83C282")) +
@@ -193,17 +191,17 @@ if (save_plots) {
 }
 
 # bottom left panel: time series of contribution of species correlations ------------------------------
-# taking only a subset of time series
-full_df <- full_df[full_df$time > 20 & full_df$time < 135, ]
 # plot
+plot_df <- full_df
+plot_df$correlation_contrib_disc[plot_df$correlation_contrib_disc == "Intermediate"] <- NA
 fig <- ggplot() +
-  geom_line(data = full_df, aes(x = time, y = correlation_contrib),
-            size = 0.7) +
-  geom_point(data = full_df, aes(x = time, y = correlation_contrib, 
+  geom_line(data = plot_df, aes(x = time, y = correlation_contrib),
+            size = 0.4) +
+  geom_point(data = plot_df, aes(x = time, y = correlation_contrib, 
                                  fill = correlation_contrib_disc,
-                                 shape = correlation_contrib_disc), size = 3.2) +
-  scale_fill_manual(values = c("#567F55", "#D5D5D5", "#83C282")) +
-  scale_shape_manual(values = c(21, 22, 24)) +
+                                 shape = correlation_contrib_disc), size = 3) +
+  scale_fill_manual(values = c("#567F55", "#83C282")) +
+  scale_shape_manual(values = c(21, 24)) +
   xlab("Time (days)") +
   ylab(expression(atop("Contribution of species",
                        "correlations (|"~bold(P)~"|) in log"))) +
