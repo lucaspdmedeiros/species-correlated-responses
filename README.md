@@ -1,6 +1,6 @@
 # Understanding the state-dependent impact of species correlated responses on community sensitivity to perturbations
 
-This repository contains the code and data associated with the paper: "Understanding the state-dependent impact of species correlated responses on community sensitivity to perturbations" by Lucas P. Medeiros and Serguei Saavedra.
+This repository contains the code and data associated with the paper: Medeiros, L. P. and Saavedra, S. (2023). Understanding the state-dependent impact of species correlated responses on community sensitivity to perturbations. *Ecology*.
 
 The repository contains 4 folders: *code*, *data*, *figs*, and *results*. Under *code/scripts* we provide the R scripts to reproduce Figures 1-5 and SI figures. 
 
